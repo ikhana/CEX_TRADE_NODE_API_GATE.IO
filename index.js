@@ -2,7 +2,6 @@ require("dotenv").config();
 const GateApi = require('gate-api');
 const client = new GateApi.ApiClient();
 client.setApiKeySecret(process.env.GATE_KEY, process.env.GATE_SECRET);
-
 const api = new GateApi.SpotApi(client);
 const currencyPair = "DARK_USDT";
 
@@ -11,36 +10,36 @@ const flashOrders = async () => {
     const orderBook = await getOrderBook();
     const bids = orderBook.bids;
     const asks = orderBook.asks;
-
     const highestBid = parseFloat(bids[0][0]);
     const lowestAsk = parseFloat(asks[0][0]);
     const spread = lowestAsk - highestBid;
-    const lastPrice = parseFloat(orderBook.last);
-
+    const lastPrice = parseFloat(orderBook.current);
     console.log(`Spread: ${spread}`);
     console.log(`Last price: ${lastPrice}`);
-
     const middlePrice = (highestBid + lowestAsk) / 2;
     console.log(`Middle price: ${middlePrice}`);
-
     const amount = 30; // Adjust amount as needed
-    const buyOrder = await createOrder(currencyPair, "buy", amount, middlePrice);
+
+    // First, create an order for the sell side
     const sellPrice = middlePrice + 0.00001; // Adjust the price difference as needed
     const sellOrder = await createOrder(currencyPair, "sell", amount, sellPrice);
-
-  
     console.log(`Limit sell order placed: ${sellOrder}`);
 
+    // Cancel the sell order
     await new Promise(resolve => setTimeout(resolve, 7000)); // Wait for 7 seconds
-
-    await cancelOrders(currencyPair, "buy"); // Cancel buy orders
     await cancelOrders(currencyPair, "sell"); // Cancel sell orders
-
-    console.log(`Buy order ${buyOrder} canceled`);
     console.log(`Sell order ${sellOrder} canceled`);
 
-    await new Promise(resolve => setTimeout(resolve, 7000)); // Wait for 7 seconds
+    // Now, create an order for the buy side
+    const buyOrder = await createOrder(currencyPair, "buy", amount, middlePrice);
+    console.log(`Limit buy order placed: ${buyOrder}`);
 
+    // Cancel the buy order
+    await new Promise(resolve => setTimeout(resolve, 7000)); // Wait for 7 seconds
+    await cancelOrders(currencyPair, "buy"); // Cancel buy orders
+    console.log(`Buy order ${buyOrder} canceled`);
+
+    await new Promise(resolve => setTimeout(resolve, 7000)); // Wait for 7 seconds
     flashOrders(); // Repeat the process
   } catch (error) {
     console.error("Error in flashOrders:", error);
@@ -48,12 +47,7 @@ const flashOrders = async () => {
 };
 
 const getOrderBook = async () => {
-  const opts = {
-    interval: '0',
-    limit: 20,
-    withId: true
-  };
-
+  const opts = { interval: '0', limit: 20, withId: true };
   try {
     const orderBook = await api.listOrderBook(currencyPair, opts);
     return orderBook.body;
@@ -74,8 +68,6 @@ const createOrder = async (currencyPair, side, amount, price) => {
       account: 'spot'
     };
 
-
-
     let order;
     try {
       order = new GateApi.Order(orderOptions);
@@ -95,7 +87,6 @@ const createOrder = async (currencyPair, side, amount, price) => {
     }
 
     console.log('Order object:', order);
-
     const newOrder = await api.createOrder(order);
     console.log("Order creation response:", newOrder.body);
     return newOrder.body;
@@ -106,11 +97,7 @@ const createOrder = async (currencyPair, side, amount, price) => {
 };
 
 const cancelOrders = async (currencyPair, side) => {
-  const opts = {
-    side: side,
-    account: "spot" // Cancel orders from the spot account
-  };
-
+  const opts = { side: side, account: "spot" };
   try {
     const cancelledOrders = await api.cancelOrders(currencyPair, opts);
     console.log(`Orders canceled for ${side}:`, cancelledOrders.body);
