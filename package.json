@@ -1,0 +1,11 @@
+{
+  "name": "gatetrade",
+  "version": "1.0.0",
+  "description": "This repo is purely for trading on gate and other CEX",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Inaam",
+  "license": "ISC"
+}
